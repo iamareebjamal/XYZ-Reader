@@ -1,24 +1,18 @@
 package areeb.xyzreader.ui;
 
-import android.app.LoaderManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.Loader;
-import android.database.Cursor;
 import android.os.Bundle;
-import android.support.design.widget.AppBarLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateUtils;
-import android.util.TypedValue;
-import android.view.MenuItem;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -28,19 +22,18 @@ import areeb.xyzreader.R;
 import areeb.xyzreader.data.ArticleLoader;
 import areeb.xyzreader.data.ItemsContract;
 import areeb.xyzreader.data.UpdaterService;
+import areeb.xyzreader.data.model.Article;
+import io.realm.Realm;
+import io.realm.RealmChangeListener;
+import io.realm.RealmResults;
 
 
-/**
- * An activity representing a list of Articles. This activity has different presentations for
- * handset and tablet-size devices. On handsets, the activity presents a list of items, which when
- * touched, lead to a {@link ArticleDetailActivity} representing item details. On tablets, the
- * activity presents a grid of items as cards.
- */
-public class ArticleListActivity extends AppCompatActivity implements
-        LoaderManager.LoaderCallbacks<Cursor> {
+public class ArticleListActivity extends AppCompatActivity {
 
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private RecyclerView mRecyclerView;
+
+    private RealmResults<Article> articles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,11 +53,20 @@ public class ArticleListActivity extends AppCompatActivity implements
         mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
 
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-        getLoaderManager().initLoader(0, null, this);
 
         if (savedInstanceState == null) {
             refresh();
         }
+
+        Realm.init(this);
+        Realm realm = Realm.getDefaultInstance();
+        articles = realm.where(Article.class).findAllAsync();
+        articles.addChangeListener(new RealmChangeListener<RealmResults<Article>>() {
+            @Override
+            public void onChange(RealmResults<Article> element) {
+                onLoadFinished();
+            }
+        });
     }
 
     private void refresh() {
@@ -82,6 +84,7 @@ public class ArticleListActivity extends AppCompatActivity implements
     protected void onStop() {
         super.onStop();
         unregisterReceiver(mRefreshingReceiver);
+        articles.removeChangeListeners();
     }
 
     private boolean mIsRefreshing = false;
@@ -100,38 +103,29 @@ public class ArticleListActivity extends AppCompatActivity implements
         mSwipeRefreshLayout.setRefreshing(mIsRefreshing);
     }
 
-    @Override
-    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        return ArticleLoader.newAllArticlesInstance(this);
-    }
 
-    @Override
-    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
-        Adapter adapter = new Adapter(cursor);
+    public void onLoadFinished() {
+        Adapter adapter = new Adapter(articles);
         adapter.setHasStableIds(true);
         mRecyclerView.setAdapter(adapter);
         int columnCount = getResources().getInteger(R.integer.list_column_count);
         StaggeredGridLayoutManager sglm =
                 new StaggeredGridLayoutManager(columnCount, StaggeredGridLayoutManager.VERTICAL);
         mRecyclerView.setLayoutManager(sglm);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-        mRecyclerView.setAdapter(null);
+        mIsRefreshing = false;
+        updateRefreshingUI();
     }
 
     private class Adapter extends RecyclerView.Adapter<ViewHolder> {
-        private Cursor mCursor;
+        private RealmResults<Article> articles;
 
-        public Adapter(Cursor cursor) {
-            mCursor = cursor;
+        public Adapter(RealmResults<Article> articles) {
+            this.articles = articles;
         }
 
         @Override
         public long getItemId(int position) {
-            mCursor.moveToPosition(position);
-            return mCursor.getLong(ArticleLoader.Query._ID);
+            return Long.parseLong(articles.get(position).id);
         }
 
         @Override
@@ -150,24 +144,24 @@ public class ArticleListActivity extends AppCompatActivity implements
 
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
-            mCursor.moveToPosition(position);
-            holder.titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            Article article = articles.get(position);
+            holder.titleView.setText(article.title);
             holder.subtitleView.setText(
-                    DateUtils.getRelativeTimeSpanString(
-                            mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
-                            System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
-                            DateUtils.FORMAT_ABBREV_ALL).toString()
+                    //DateUtils.getRelativeTimeSpanString(
+                            article.published_date.substring(0, 10)
+                            //System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
+                            //DateUtils.FORMAT_ABBREV_ALL).toString()
                             + " by "
-                            + mCursor.getString(ArticleLoader.Query.AUTHOR));
+                            + article.author);
             holder.thumbnailView.setImageUrl(
-                    mCursor.getString(ArticleLoader.Query.THUMB_URL),
+                    article.thumb,
                     ImageLoaderHelper.getInstance(ArticleListActivity.this).getImageLoader());
-            holder.thumbnailView.setAspectRatio(mCursor.getFloat(ArticleLoader.Query.ASPECT_RATIO));
+            holder.thumbnailView.setAspectRatio(Float.parseFloat(article.aspect_ratio));
         }
 
         @Override
         public int getItemCount() {
-            return mCursor.getCount();
+            return articles.size();
         }
     }
 

@@ -3,6 +3,7 @@ package areeb.xyzreader.data;
 import android.app.IntentService;
 import android.content.ContentProviderOperation;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.OperationApplicationException;
 import android.net.ConnectivityManager;
@@ -18,7 +19,9 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+import areeb.xyzreader.data.model.Article;
 import areeb.xyzreader.remote.RemoteEndpointUtil;
+import io.realm.Realm;
 
 public class UpdaterService extends IntentService {
     private static final String TAG = "UpdaterService";
@@ -60,19 +63,40 @@ public class UpdaterService extends IntentService {
                 throw new JSONException("Invalid parsed item array" );
             }
 
+            Realm.init(this);
+            Realm realm = Realm.getDefaultInstance();
+
             for (int i = 0; i < array.length(); i++) {
                 ContentValues values = new ContentValues();
                 JSONObject object = array.getJSONObject(i);
+
+                final Article article = new Article();
                 values.put(ItemsContract.Items.SERVER_ID, object.getString("id" ));
+                article.id = object.getString("id" );
                 values.put(ItemsContract.Items.AUTHOR, object.getString("author" ));
+                article.author = object.getString("author");
                 values.put(ItemsContract.Items.TITLE, object.getString("title" ));
+                article.title = object.getString("title" );
                 values.put(ItemsContract.Items.BODY, object.getString("body" ));
+                article.body = object.getString("body");
                 values.put(ItemsContract.Items.THUMB_URL, object.getString("thumb" ));
+                article.thumb = object.getString("thumb");
                 values.put(ItemsContract.Items.PHOTO_URL, object.getString("photo" ));
+                article.photo = object.getString("photo" );
                 values.put(ItemsContract.Items.ASPECT_RATIO, object.getString("aspect_ratio" ));
+                article.aspect_ratio = object.getString("aspect_ratio");
                 time.parse3339(object.getString("published_date"));
                 values.put(ItemsContract.Items.PUBLISHED_DATE, time.toMillis(false));
+                article.published_date = object.getString("published_date");
                 cpo.add(ContentProviderOperation.newInsert(dirUri).withValues(values).build());
+
+                realm.executeTransaction(new Realm.Transaction() {
+                    @Override
+                    public void execute(Realm realm) {
+                        realm.copyToRealmOrUpdate(article);
+                        Log.d("Realm", "Saved " + article.title);
+                    }
+                });
             }
 
             getContentResolver().applyBatch(ItemsContract.CONTENT_AUTHORITY, cpo);
