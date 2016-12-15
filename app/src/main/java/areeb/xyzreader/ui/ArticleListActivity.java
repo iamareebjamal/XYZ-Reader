@@ -13,7 +13,6 @@ import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateUtils;
 import android.text.format.Time;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -23,8 +22,7 @@ import android.widget.TextView;
 import com.squareup.picasso.Picasso;
 
 import areeb.xyzreader.R;
-import areeb.xyzreader.data.ArticleLoader;
-import areeb.xyzreader.data.ItemsContract;
+import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.UpdaterService;
 import areeb.xyzreader.data.model.Article;
 import io.realm.Realm;
@@ -63,8 +61,7 @@ public class ArticleListActivity extends AppCompatActivity {
         }
 
         Realm.init(this);
-        Realm realm = Realm.getDefaultInstance();
-        articles = realm.where(Article.class).findAllAsync();
+        articles = ArticleProvider.getArticles();
         articles.addChangeListener(new RealmChangeListener<RealmResults<Article>>() {
             @Override
             public void onChange(RealmResults<Article> element) {
@@ -129,7 +126,7 @@ public class ArticleListActivity extends AppCompatActivity {
 
         @Override
         public long getItemId(int position) {
-            return Long.parseLong(articles.get(position).id);
+            return articles.get(position).id;
         }
 
         @Override
@@ -139,8 +136,9 @@ public class ArticleListActivity extends AppCompatActivity {
             view.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    startActivity(new Intent(Intent.ACTION_VIEW,
-                            ItemsContract.Items.buildItemUri(getItemId(vh.getAdapterPosition()))));
+                    Intent intent = new Intent(ArticleListActivity.this, ArticleDetailActivity.class);
+                    intent.putExtra(ArticleDetailFragment.ARG_ITEM_ID, articles.get(vh.getAdapterPosition()).id);
+                    startActivity(intent);
                 }
             });
             return vh;
@@ -167,10 +165,6 @@ public class ArticleListActivity extends AppCompatActivity {
                     .load(article.thumb)
                     .placeholder(R.drawable.photo_background_protection)
                     .into(holder.thumbnailView);
-            /*holder.thumbnailView.setImageUrl(
-                    article.thumb,
-                    ImageLoaderHelper.getInstance(ArticleListActivity.this).getImageLoader());
-            holder.thumbnailView.setAspectRatio(Float.parseFloat(article.aspect_ratio));*/
         }
 
         @Override

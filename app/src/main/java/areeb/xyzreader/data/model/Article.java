@@ -5,12 +5,12 @@ import io.realm.annotations.PrimaryKey;
 
 public class Article extends RealmObject {
     @PrimaryKey
-    public String id;
+    public long id;
     public String title;
     public String author;
     public String body;
     public String thumb;
     public String photo;
-    public String aspect_ratio;
+    public float aspect_ratio;
     public String published_date;
 }

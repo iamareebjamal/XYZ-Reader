@@ -1,16 +1,12 @@
 package areeb.xyzreader.ui;
 
-import android.database.Cursor;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.util.TypedValue;
@@ -18,21 +14,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 
+import java.util.ListIterator;
+
 import areeb.xyzreader.R;
-import areeb.xyzreader.data.ArticleLoader;
-import areeb.xyzreader.data.ItemsContract;
+import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.model.Article;
-import io.realm.Realm;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
 
 /**
  * An activity representing a single Article detail screen, letting you swipe between articles.
  */
-public class ArticleDetailActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Cursor> {
+public class ArticleDetailActivity extends AppCompatActivity {
 
-    private Cursor mCursor;
     private long mStartId;
 
     private long mSelectedItemId;
@@ -44,6 +38,7 @@ public class ArticleDetailActivity extends AppCompatActivity
     private View mUpButtonContainer;
     private View mUpButton;
 
+    private RealmResults<Article> articles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +50,13 @@ public class ArticleDetailActivity extends AppCompatActivity
         }
         setContentView(R.layout.activity_article_detail);
 
-        getSupportLoaderManager().initLoader(0, null, this);
+        articles = ArticleProvider.getArticles();
+        articles.addChangeListener(new RealmChangeListener<RealmResults<Article>>() {
+            @Override
+            public void onChange(RealmResults<Article> element) {
+                onLoadFinished();
+            }
+        });
 
         mPagerAdapter = new MyPagerAdapter(getSupportFragmentManager());
         mPager = (ViewPager) findViewById(R.id.pager);
@@ -75,10 +76,7 @@ public class ArticleDetailActivity extends AppCompatActivity
 
             @Override
             public void onPageSelected(int position) {
-                if (mCursor != null) {
-                    mCursor.moveToPosition(position);
-                }
-                mSelectedItemId = mCursor.getLong(ArticleLoader.Query._ID);
+                mSelectedItemId = articles.get(position).id;
                 updateUpButtonPosition();
             }
         });
@@ -107,44 +105,32 @@ public class ArticleDetailActivity extends AppCompatActivity
         }
 
         if (savedInstanceState == null) {
-            if (getIntent() != null && getIntent().getData() != null) {
-                mStartId = ItemsContract.Items.getItemId(getIntent().getData());
+            if (getIntent() != null && getIntent().hasExtra(ArticleDetailFragment.ARG_ITEM_ID)) {
+                mStartId = getIntent().getLongExtra(ArticleDetailFragment.ARG_ITEM_ID, 0);
                 mSelectedItemId = mStartId;
             }
         }
 
+        onLoadFinished();
+
     }
 
-    @Override
-    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        return ArticleLoader.newAllArticlesInstance(this);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
-        mCursor = cursor;
+    public void onLoadFinished() {
         mPagerAdapter.notifyDataSetChanged();
 
         // Select the start ID
+        Log.d("kl", " "+mStartId);
         if (mStartId > 0) {
-            mCursor.moveToFirst();
-            // TODO: optimize
-            while (!mCursor.isAfterLast()) {
-                if (mCursor.getLong(ArticleLoader.Query._ID) == mStartId) {
-                    final int position = mCursor.getPosition();
+            ListIterator<Article> articleListIterator = articles.listIterator();
+            while (articleListIterator.hasNext()) {
+                if (articleListIterator.next().id == mStartId) {
+                    final int position = articleListIterator.nextIndex();
                     mPager.setCurrentItem(position, false);
                     break;
                 }
-                mCursor.moveToNext();
             }
             mStartId = 0;
         }
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> cursorLoader) {
-        mCursor = null;
-        mPagerAdapter.notifyDataSetChanged();
     }
 
     public void onUpButtonFloorChanged(long itemId, ArticleDetailFragment fragment) {
@@ -176,13 +162,12 @@ public class ArticleDetailActivity extends AppCompatActivity
 
         @Override
         public Fragment getItem(int position) {
-            mCursor.moveToPosition(position);
-            return ArticleDetailFragment.newInstance(mCursor.getLong(ArticleLoader.Query._ID));
+            return ArticleDetailFragment.newInstance(articles.get(position).id);
         }
 
         @Override
         public int getCount() {
-            return (mCursor != null) ? mCursor.getCount() : 0;
+            return (articles != null) ? articles.size() : 0;
         }
     }
 }
