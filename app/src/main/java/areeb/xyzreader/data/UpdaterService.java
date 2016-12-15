@@ -1,26 +1,16 @@
 package areeb.xyzreader.data;
 
 import android.app.IntentService;
-import android.content.ContentProviderOperation;
-import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
-import android.content.OperationApplicationException;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
-import android.os.RemoteException;
-import android.text.format.Time;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
+import java.io.IOException;
+import java.util.List;
 
 import areeb.xyzreader.data.model.Article;
-import areeb.xyzreader.remote.RemoteEndpointUtil;
+import areeb.xyzreader.remote.ArticleService;
 import io.realm.Realm;
 
 public class UpdaterService extends IntentService {
@@ -37,7 +27,6 @@ public class UpdaterService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        Time time = new Time();
 
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         NetworkInfo ni = cm.getActiveNetworkInfo();
@@ -50,59 +39,20 @@ public class UpdaterService extends IntentService {
                 new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, true));
 
         // Don't even inspect the intent, we only do one thing, and that's fetch content.
-        ArrayList<ContentProviderOperation> cpo = new ArrayList<ContentProviderOperation>();
-
-        Uri dirUri = ItemsContract.Items.buildDirUri();
-
-        // Delete all items
-        cpo.add(ContentProviderOperation.newDelete(dirUri).build());
 
         try {
-            JSONArray array = RemoteEndpointUtil.fetchJsonArray();
-            if (array == null) {
-                throw new JSONException("Invalid parsed item array" );
-            }
-
             Realm.init(this);
             Realm realm = Realm.getDefaultInstance();
+            List<Article> articles = ArticleService.getArticlesCall().execute().body();
 
-            for (int i = 0; i < array.length(); i++) {
-                ContentValues values = new ContentValues();
-                JSONObject object = array.getJSONObject(i);
-
-                final Article article = new Article();
-                values.put(ItemsContract.Items.SERVER_ID, object.getString("id" ));
-                article.id = object.getString("id" );
-                values.put(ItemsContract.Items.AUTHOR, object.getString("author" ));
-                article.author = object.getString("author");
-                values.put(ItemsContract.Items.TITLE, object.getString("title" ));
-                article.title = object.getString("title" );
-                values.put(ItemsContract.Items.BODY, object.getString("body" ));
-                article.body = object.getString("body");
-                values.put(ItemsContract.Items.THUMB_URL, object.getString("thumb" ));
-                article.thumb = object.getString("thumb");
-                values.put(ItemsContract.Items.PHOTO_URL, object.getString("photo" ));
-                article.photo = object.getString("photo" );
-                values.put(ItemsContract.Items.ASPECT_RATIO, object.getString("aspect_ratio" ));
-                article.aspect_ratio = object.getString("aspect_ratio");
-                time.parse3339(object.getString("published_date"));
-                values.put(ItemsContract.Items.PUBLISHED_DATE, time.toMillis(false));
-                article.published_date = object.getString("published_date");
-                cpo.add(ContentProviderOperation.newInsert(dirUri).withValues(values).build());
-
-                realm.executeTransaction(new Realm.Transaction() {
-                    @Override
-                    public void execute(Realm realm) {
-                        realm.copyToRealmOrUpdate(article);
-                        Log.d("Realm", "Saved " + article.title);
-                    }
-                });
+            for(final Article article : articles) {
+                realm.beginTransaction();
+                realm.copyToRealmOrUpdate(article);
+                realm.commitTransaction();
+                Log.d("Realm", "Saved " + article.title);
             }
-
-            getContentResolver().applyBatch(ItemsContract.CONTENT_AUTHORITY, cpo);
-
-        } catch (JSONException | RemoteException | OperationApplicationException e) {
-            Log.e(TAG, "Error updating content.", e);
+        } catch (IOException ioe) {
+            Log.e(TAG, "Error updating content.", ioe);
         }
 
         sendStickyBroadcast(
