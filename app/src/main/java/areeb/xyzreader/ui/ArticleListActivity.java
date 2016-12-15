@@ -12,6 +12,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateUtils;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -142,15 +143,21 @@ public class ArticleListActivity extends AppCompatActivity {
             return vh;
         }
 
+        private String formatDate(String date) {
+            Time time = new Time();
+            time.parse3339(date);
+            return DateUtils.getRelativeTimeSpanString(
+                    time.toMillis(false),
+                    System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
+                    DateUtils.FORMAT_ABBREV_ALL).toString();
+        }
+
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
             Article article = articles.get(position);
             holder.titleView.setText(article.title);
             holder.subtitleView.setText(
-                    //DateUtils.getRelativeTimeSpanString(
-                            article.published_date.substring(0, 10)
-                            //System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
-                            //DateUtils.FORMAT_ABBREV_ALL).toString()
+                            formatDate(article.published_date)
                             + " by "
                             + article.author);
             holder.thumbnailView.setImageUrl(
