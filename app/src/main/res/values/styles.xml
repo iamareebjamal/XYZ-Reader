@@ -23,7 +23,7 @@
         <item name="colorAccent">@color/theme_accent</item>
     </style>
 
-    <style name="Theme.Bacon.Detail" parent="Theme.Bacon">
+    <style name="Theme.Bacon.Detail">
     </style>
 
 </resources>
