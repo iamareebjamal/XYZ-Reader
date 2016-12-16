@@ -124,7 +124,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
             ListIterator<Article> articleListIterator = articles.listIterator();
             while (articleListIterator.hasNext()) {
                 if (articleListIterator.next().id == mStartId) {
-                    final int position = articleListIterator.nextIndex();
+                    final int position = articleListIterator.previousIndex();
                     mPager.setCurrentItem(position, false);
                     break;
                 }

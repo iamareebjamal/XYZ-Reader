@@ -68,6 +68,8 @@ public class ArticleListActivity extends AppCompatActivity {
                 onLoadFinished();
             }
         });
+        onLoadFinished();
+
     }
 
     private void refresh() {
@@ -106,6 +108,8 @@ public class ArticleListActivity extends AppCompatActivity {
 
 
     public void onLoadFinished() {
+        if(articles == null)
+            return;
         Adapter adapter = new Adapter(articles);
         adapter.setHasStableIds(true);
         mRecyclerView.setAdapter(adapter);
