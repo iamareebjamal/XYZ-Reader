@@ -22,11 +22,11 @@ public class ArticleProvider {
     }
 
     public static Article getArticle(long id) {
-        if(articles == null)
+        if (articles == null)
             loadResults();
 
-        for(Article article : articles) {
-            if(article.id == id)
+        for (Article article : articles) {
+            if (article.id == id)
                 return article;
         }
 

@@ -14,12 +14,11 @@ import areeb.xyzreader.remote.ArticleService;
 import io.realm.Realm;
 
 public class UpdaterService extends IntentService {
-    private static final String TAG = "UpdaterService";
-
     public static final String BROADCAST_ACTION_STATE_CHANGE
             = "com.example.xyzreader.intent.action.STATE_CHANGE";
     public static final String EXTRA_REFRESHING
             = "com.example.xyzreader.intent.extra.REFRESHING";
+    private static final String TAG = "UpdaterService";
 
     public UpdaterService() {
         super(TAG);
@@ -45,7 +44,7 @@ public class UpdaterService extends IntentService {
             Realm realm = Realm.getDefaultInstance();
             List<Article> articles = ArticleService.getArticlesCall().execute().body();
 
-            for(final Article article : articles) {
+            for (final Article article : articles) {
                 realm.beginTransaction();
                 realm.copyToRealmOrUpdate(article);
                 realm.commitTransaction();

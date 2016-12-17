@@ -15,7 +15,7 @@ public class ArticleService {
 
     private static ArticleAPI articleAPI = retrofit.create(ArticleAPI.class);
 
-    public static Call<List<Article>> getArticlesCall(){
+    public static Call<List<Article>> getArticlesCall() {
         return articleAPI.getArticles();
     }
 }
