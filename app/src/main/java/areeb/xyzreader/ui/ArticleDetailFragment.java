@@ -3,11 +3,16 @@ package areeb.xyzreader.ui;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.os.Binder;
 import android.os.Bundle;
 import android.support.design.widget.CollapsingToolbarLayout;
+import android.support.design.widget.FloatingActionButton;
+import android.support.graphics.drawable.VectorDrawableCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ShareCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.graphics.drawable.DrawableCompat;
 import android.support.v7.graphics.Palette;
 import android.support.v7.widget.Toolbar;
 import android.text.Html;
@@ -26,16 +31,40 @@ import com.squareup.picasso.Picasso;
 import areeb.xyzreader.R;
 import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.model.Article;
+import butterknife.BindView;
+import butterknife.ButterKnife;
 
 public class ArticleDetailFragment extends Fragment {
     public static final String ARG_ITEM_ID = "item_id";
     private long mItemId;
-    private int mVibrantColor;
+    private int mVibrantColor = 0xFF333333;
 
     private View mRootView;
-    private ImageView mPhotoView;
-    private CollapsingToolbarLayout collapsingToolbar;
-    private Toolbar toolbar;
+
+    @BindView(R.id.backdrop)
+    ImageView mPhotoView;
+    @BindView(R.id.collapsing_toolbar)
+    CollapsingToolbarLayout collapsingToolbar;
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+    @BindView(R.id.fab)
+    FloatingActionButton fab;
+
+    @BindView(R.id.article_title)
+    TextView titleView;
+    @BindView(R.id.date)
+    TextView dateView;
+    @BindView(R.id.author)
+    TextView authorView;
+    @BindView(R.id.article_body)
+    TextView bodyView;
+
+    @BindView(R.id.author_photo)
+    ImageView authorImage;
+    @BindView(R.id.date_photo)
+    ImageView dateImage;
+    @BindView(R.id.title_photo)
+    ImageView titleImage;
 
     private Article article;
 
@@ -67,23 +96,21 @@ public class ArticleDetailFragment extends Fragment {
                              Bundle savedInstanceState) {
         mRootView = inflater.inflate(R.layout.fragment_article_detail, container, false);
 
-        mPhotoView = (ImageView) mRootView.findViewById(R.id.backdrop);
+        ButterKnife.bind(this, mRootView);
 
-        mRootView.findViewById(R.id.fab).setOnClickListener(new View.OnClickListener() {
+        article = ArticleProvider.getArticle(mItemId);
+
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(Intent.createChooser(ShareCompat.IntentBuilder.from(getActivity())
                         .setType("text/plain")
-                        .setText("Some sample text")
+                        .setText(article.title+"\n\n"+article.body)
                         .getIntent(), getString(R.string.action_share)));
             }
         });
 
-        article = ArticleProvider.getArticle(mItemId);
-        toolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
         getActivityCast().setToolbar(toolbar);
-
-        collapsingToolbar = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsing_toolbar);
 
         bindViews();
         return mRootView;
@@ -102,49 +129,59 @@ public class ArticleDetailFragment extends Fragment {
                 DateUtils.FORMAT_ABBREV_ALL).toString();
     }
 
+    private static void setTint(ImageView imageView, int tintColor) {
+        Drawable wrapped = DrawableCompat.wrap(imageView.getDrawable());
+        DrawableCompat.setTint(wrapped, tintColor);
+    }
+
+    private void setColors() {
+        Bitmap bitmap = ((BitmapDrawable) mPhotoView.getDrawable()).getBitmap();
+        if (bitmap == null)
+            return;
+        Palette.from(bitmap)
+                .maximumColorCount(24)
+                .generate(new Palette.PaletteAsyncListener() {
+                    @Override
+                    public void onGenerated(Palette palette) {
+                        Palette.Swatch swatch = palette.getDarkVibrantSwatch();
+                        if (swatch != null) {
+                            mVibrantColor = swatch.getRgb();
+                            titleView.setTextColor(swatch.getTitleTextColor());
+                            authorView.setTextColor(swatch.getBodyTextColor());
+                            dateView.setTextColor(swatch.getBodyTextColor());
+
+                            setTint(titleImage, swatch.getBodyTextColor());
+                            setTint(authorImage, swatch.getBodyTextColor());
+                            setTint(dateImage, swatch.getBodyTextColor());
+                        }
+
+                        mRootView.findViewById(R.id.meta_bar)
+                                .setBackgroundColor(mVibrantColor);
+                        collapsingToolbar.setStatusBarScrimColor(mVibrantColor);
+                    }
+                });
+    }
+
     private void bindViews() {
         if (mRootView == null) {
             return;
         }
 
-        TextView titleView = (TextView) mRootView.findViewById(R.id.article_title);
-        TextView bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
-        bylineView.setMovementMethod(new LinkMovementMethod());
-        TextView bodyView = (TextView) mRootView.findViewById(R.id.article_body);
-
         if (article != null) {
-            mRootView.setAlpha(0);
-            mRootView.setVisibility(View.VISIBLE);
-            mRootView.animate().alpha(1);
+            bodyView.setMovementMethod(LinkMovementMethod.getInstance());
+
             titleView.setText(article.title);
-            bylineView.setText(Html.fromHtml(
-                    formatDate(article.published_date)
-                            + " by <font color='#ffffff'>"
-                            + article.author
-                            + "</font>"));
+            authorView.setText(article.author);
+            dateView.setText(formatDate(article.published_date));
             bodyView.setText(Html.fromHtml(article.body));
             Picasso.with(getContext())
                     .load(article.photo)
                     .into(mPhotoView, new Callback() {
                         @Override
                         public void onSuccess() {
-                            Bitmap bitmap = ((BitmapDrawable) mPhotoView.getDrawable()).getBitmap();
-                            if (bitmap == null)
-                                return;
-                            Palette.from(bitmap)
-                                    .maximumColorCount(24)
-                                    .generate(new Palette.PaletteAsyncListener() {
-                                        @Override
-                                        public void onGenerated(Palette palette) {
-                                            mVibrantColor = palette.getDarkVibrantColor(0xFF555555);
-                                            mRootView.findViewById(R.id.meta_bar)
-                                                    .setBackgroundColor(mVibrantColor);
-                                            collapsingToolbar.setStatusBarScrimColor(mVibrantColor);
-                                        }
-                            });
+                            setColors();
 
                         }
-
 
                         @Override
                         public void onError() {
@@ -155,7 +192,7 @@ public class ArticleDetailFragment extends Fragment {
         } else {
             mRootView.setVisibility(View.GONE);
             titleView.setText("N/A");
-            bylineView.setText("N/A" );
+            authorView.setText("N/A" );
             bodyView.setText("N/A");
         }
     }
