@@ -4,14 +4,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Binder;
 import android.os.Bundle;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.design.widget.FloatingActionButton;
-import android.support.graphics.drawable.VectorDrawableCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ShareCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.support.v7.graphics.Palette;
 import android.support.v7.widget.Toolbar;
@@ -36,11 +33,6 @@ import butterknife.ButterKnife;
 
 public class ArticleDetailFragment extends Fragment {
     public static final String ARG_ITEM_ID = "item_id";
-    private long mItemId;
-    private int mVibrantColor = 0xFF333333;
-
-    private View mRootView;
-
     @BindView(R.id.backdrop)
     ImageView mPhotoView;
     @BindView(R.id.collapsing_toolbar)
@@ -49,7 +41,6 @@ public class ArticleDetailFragment extends Fragment {
     Toolbar toolbar;
     @BindView(R.id.fab)
     FloatingActionButton fab;
-
     @BindView(R.id.article_title)
     TextView titleView;
     @BindView(R.id.date)
@@ -58,17 +49,19 @@ public class ArticleDetailFragment extends Fragment {
     TextView authorView;
     @BindView(R.id.article_body)
     TextView bodyView;
-
     @BindView(R.id.author_photo)
     ImageView authorImage;
     @BindView(R.id.date_photo)
     ImageView dateImage;
     @BindView(R.id.title_photo)
     ImageView titleImage;
-
+    private long mItemId;
+    private int mVibrantColor = 0xFF333333;
+    private View mRootView;
     private Article article;
 
-    public ArticleDetailFragment() { }
+    public ArticleDetailFragment() {
+    }
 
     public static ArticleDetailFragment newInstance(long itemId) {
         Bundle arguments = new Bundle();
@@ -76,6 +69,11 @@ public class ArticleDetailFragment extends Fragment {
         ArticleDetailFragment fragment = new ArticleDetailFragment();
         fragment.setArguments(arguments);
         return fragment;
+    }
+
+    private static void setTint(ImageView imageView, int tintColor) {
+        Drawable wrapped = DrawableCompat.wrap(imageView.getDrawable());
+        DrawableCompat.setTint(wrapped, tintColor);
     }
 
     @Override
@@ -105,7 +103,7 @@ public class ArticleDetailFragment extends Fragment {
             public void onClick(View view) {
                 startActivity(Intent.createChooser(ShareCompat.IntentBuilder.from(getActivity())
                         .setType("text/plain")
-                        .setText(article.title+"\n\n"+article.body)
+                        .setText(article.title + "\n\n" + article.body)
                         .getIntent(), getString(R.string.action_share)));
             }
         });
@@ -127,11 +125,6 @@ public class ArticleDetailFragment extends Fragment {
                 time.toMillis(false),
                 System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
                 DateUtils.FORMAT_ABBREV_ALL).toString();
-    }
-
-    private static void setTint(ImageView imageView, int tintColor) {
-        Drawable wrapped = DrawableCompat.wrap(imageView.getDrawable());
-        DrawableCompat.setTint(wrapped, tintColor);
     }
 
     private void setColors() {
@@ -192,7 +185,7 @@ public class ArticleDetailFragment extends Fragment {
         } else {
             mRootView.setVisibility(View.GONE);
             titleView.setText("N/A");
-            authorView.setText("N/A" );
+            authorView.setText("N/A");
             bodyView.setText("N/A");
         }
     }

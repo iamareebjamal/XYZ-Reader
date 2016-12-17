@@ -18,13 +18,13 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-
 import com.squareup.picasso.Picasso;
 
 import areeb.xyzreader.R;
 import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.UpdaterService;
 import areeb.xyzreader.data.model.Article;
+import butterknife.BindView;
 import io.realm.Realm;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
@@ -32,17 +32,29 @@ import io.realm.RealmResults;
 
 public class ArticleListActivity extends AppCompatActivity {
 
-    private SwipeRefreshLayout mSwipeRefreshLayout;
-    private RecyclerView mRecyclerView;
+    @BindView(R.id.toolbar)
+    Toolbar mToolbar;
+    @BindView(R.id.swipe_refresh_layout)
+    SwipeRefreshLayout mSwipeRefreshLayout;
+    @BindView(R.id.recycler_view)
+    RecyclerView mRecyclerView;
 
     private RealmResults<Article> articles;
+    private boolean mIsRefreshing = false;
+    private BroadcastReceiver mRefreshingReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (UpdaterService.BROADCAST_ACTION_STATE_CHANGE.equals(intent.getAction())) {
+                mIsRefreshing = intent.getBooleanExtra(UpdaterService.EXTRA_REFRESHING, false);
+                updateRefreshingUI();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_article_list);
-
-        Toolbar mToolbar = (Toolbar) findViewById(R.id.toolbar);
 
         setSupportActionBar(mToolbar);
 
@@ -51,10 +63,6 @@ public class ArticleListActivity extends AppCompatActivity {
             ab.setDisplayShowCustomEnabled(true);
             ab.setDisplayShowTitleEnabled(false);
         }
-
-        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
-
-        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
         if (savedInstanceState == null) {
             refresh();
@@ -90,25 +98,13 @@ public class ArticleListActivity extends AppCompatActivity {
         articles.removeChangeListeners();
     }
 
-    private boolean mIsRefreshing = false;
-
-    private BroadcastReceiver mRefreshingReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (UpdaterService.BROADCAST_ACTION_STATE_CHANGE.equals(intent.getAction())) {
-                mIsRefreshing = intent.getBooleanExtra(UpdaterService.EXTRA_REFRESHING, false);
-                updateRefreshingUI();
-            }
-        }
-    };
-
     private void updateRefreshingUI() {
         mSwipeRefreshLayout.setRefreshing(mIsRefreshing);
     }
 
 
     public void onLoadFinished() {
-        if(articles == null)
+        if (articles == null)
             return;
         Adapter adapter = new Adapter(articles);
         adapter.setHasStableIds(true);
@@ -119,6 +115,19 @@ public class ArticleListActivity extends AppCompatActivity {
         mRecyclerView.setLayoutManager(sglm);
         mIsRefreshing = false;
         updateRefreshingUI();
+    }
+
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public ImageView thumbnailView;
+        public TextView titleView;
+        public TextView subtitleView;
+
+        public ViewHolder(View view) {
+            super(view);
+            thumbnailView = (ImageView) view.findViewById(R.id.thumbnail);
+            titleView = (TextView) view.findViewById(R.id.article_title);
+            subtitleView = (TextView) view.findViewById(R.id.article_subtitle);
+        }
     }
 
     private class Adapter extends RecyclerView.Adapter<ViewHolder> {
@@ -162,7 +171,7 @@ public class ArticleListActivity extends AppCompatActivity {
             Article article = articles.get(position);
             holder.titleView.setText(article.title);
             holder.subtitleView.setText(
-                            formatDate(article.published_date)
+                    formatDate(article.published_date)
                             + " by "
                             + article.author);
             Picasso.with(ArticleListActivity.this)
@@ -174,19 +183,6 @@ public class ArticleListActivity extends AppCompatActivity {
         @Override
         public int getItemCount() {
             return articles.size();
-        }
-    }
-
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        public ImageView thumbnailView;
-        public TextView titleView;
-        public TextView subtitleView;
-
-        public ViewHolder(View view) {
-            super(view);
-            thumbnailView = (ImageView) view.findViewById(R.id.thumbnail);
-            titleView = (TextView) view.findViewById(R.id.article_title);
-            subtitleView = (TextView) view.findViewById(R.id.article_subtitle);
         }
     }
 }

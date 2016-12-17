@@ -1,7 +1,5 @@
 package areeb.xyzreader.ui;
 
-import android.graphics.drawable.ColorDrawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -13,17 +11,17 @@ import android.support.v4.view.WindowInsetsCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
-import android.util.TypedValue;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 
 import java.util.ListIterator;
 
 import areeb.xyzreader.R;
 import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.model.Article;
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
 
@@ -32,9 +30,9 @@ import io.realm.RealmResults;
  */
 public class ArticleDetailActivity extends AppCompatActivity {
 
+    @BindView(R.id.pager)
+    ViewPager mPager;
     private long mStartId;
-
-    private ViewPager mPager;
     private MyPagerAdapter mPagerAdapter;
 
     private RealmResults<Article> articles;
@@ -43,6 +41,8 @@ public class ArticleDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_article_detail);
+
+        ButterKnife.bind(this);
 
         articles = ArticleProvider.getArticles();
         articles.addChangeListener(new RealmChangeListener<RealmResults<Article>>() {
@@ -53,23 +53,19 @@ public class ArticleDetailActivity extends AppCompatActivity {
         });
 
         mPagerAdapter = new MyPagerAdapter(getSupportFragmentManager());
-        mPager = (ViewPager) findViewById(R.id.pager);
         mPager.setAdapter(mPagerAdapter);
-        mPager.setPageMargin((int) TypedValue
-                .applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, getResources().getDisplayMetrics()));
-        mPager.setPageMarginDrawable(new ColorDrawable(0x22000000));
 
         ViewCompat.setOnApplyWindowInsetsListener(mPager, new OnApplyWindowInsetsListener() {
             @Override
             public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
                 insets = ViewCompat.onApplyWindowInsets(v, insets);
-                if(insets.isConsumed())
+                if (insets.isConsumed())
                     return insets;
 
                 boolean consumed = false;
-                for(int i = 0, count = mPager.getChildCount(); i < count; i++) {
+                for (int i = 0, count = mPager.getChildCount(); i < count; i++) {
                     ViewCompat.dispatchApplyWindowInsets(mPager.getChildAt(i), insets);
-                    if(insets.isConsumed())
+                    if (insets.isConsumed())
                         consumed = true;
                 }
                 return consumed ? insets.consumeSystemWindowInsets() : insets;
@@ -84,6 +80,16 @@ public class ArticleDetailActivity extends AppCompatActivity {
 
         onLoadFinished();
 
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                finish();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public void onLoadFinished() {
@@ -106,7 +112,7 @@ public class ArticleDetailActivity extends AppCompatActivity {
     public void setToolbar(Toolbar toolbar) {
         setSupportActionBar(toolbar);
         ActionBar ab = getSupportActionBar();
-        if(ab != null){
+        if (ab != null) {
             ab.setDisplayHomeAsUpEnabled(true);
             ab.setDefaultDisplayHomeAsUpEnabled(true);
             ab.setHomeButtonEnabled(true);
