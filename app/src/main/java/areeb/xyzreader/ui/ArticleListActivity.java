@@ -25,6 +25,7 @@ import areeb.xyzreader.data.ArticleProvider;
 import areeb.xyzreader.data.UpdaterService;
 import areeb.xyzreader.data.model.Article;
 import butterknife.BindView;
+import butterknife.ButterKnife;
 import io.realm.Realm;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
@@ -55,6 +56,8 @@ public class ArticleListActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_article_list);
+
+        ButterKnife.bind(this);
 
         setSupportActionBar(mToolbar);
 
